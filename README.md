@@ -1,4 +1,4 @@
-# JWT Analyzer v1.1
+# JWT Analyzer v1.0.0
 
 A professional, modular, and secure CLI-based tool for analyzing, verifying, and testing JSON Web Tokens (JWTs).
 
