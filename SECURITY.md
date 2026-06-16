@@ -1,26 +1,46 @@
 # Security Policy
 
-## Supported Versions
+> **Security is not a feature, it's a foundation.** 🛡️
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+---
 
-## Reporting a Vulnerability
+## 🔒 Supported Versions
 
-We take security very seriously at JWT Analyzer. If you discover a security vulnerability, please **do not** open a public issue. Instead, please report it to us privately following these steps:
+We maintain strict version control to ensure security patches are delivered effectively.
 
-1.  **Email**: Send an email to [wanheda.work@gmail.com](mailto:wanheda.work@gmail.com).
-2.  **Subject Line**: Please use the following subject format: `[SECURITY] JWT-Analyzer - [ItsWanheda]`
-3.  **Report Details**: In your email, please provide as much of the following information as possible:
-    *   A clear description of the vulnerability.
-    *   Affected version(s) of JWT Analyzer.
-    *   Steps to reproduce the vulnerability.
-    *   The potential impact of the vulnerability.
-    *   Any suggested mitigation or fix, if known.
+| Version | Supported | Status |
+| :--- | :---: | :--- |
+| **1.0.0** | ✅ | Active |
+---
 
-## Response Commitment
+## 🚨 Reporting a Vulnerability
 
-We strive to acknowledge all security reports within **48 hours**. We are committed to a timely resolution and will provide a timeline for addressing validated vulnerabilities. Critical vulnerabilities will be prioritized for the fastest possible remediation.
+We prioritize the security of our infrastructure and users above all else. If you believe you have discovered a vulnerability, we request that you **disclose it responsibly** by following our private disclosure process.
 
+### ⚠️ Guidelines
+- **DO NOT** open a public issue, pull request, or discussion regarding a potential vulnerability.
+- **DO NOT** exploit the vulnerability on live systems.
+- **DO NOT** share details of the exploit with third parties until a patch is released.
+
+### 📧 Disclosure Process
+Please report all findings directly via email:
+
+**[wanheda.work@gmail.com](mailto:wanheda.work@gmail.com)**
+
+*To ensure we handle your report efficiently, please include:*
+* **Proof of Concept (PoC)** or detailed reproduction steps
+* **Impact Analysis**
+* **Suggested Remediation** (optional)
+
+---
+
+## ⏱️ Response SLA
+
+We treat security reports as high-priority incidents. You can expect the following response timeline:
+
+1.  **Acknowledgment**: Within **48 hours** of initial receipt.
+2.  **Analysis & Feedback**: Within **72 hours**, we will provide an initial assessment and our plan for remediation.
+
+---
+*Thank you for helping keep this project secure for everyone.*
 ---
