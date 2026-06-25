@@ -469,7 +469,7 @@ The `--yes` flag on `forge` exists because we want you to think twice.
 ### Reporting vulnerabilities in THIS tool
 
 Found a security bug in jwt-analyzer itself? Please email
-**security@yourdomain.com** (do **not** open a public GitHub issue).
+**wanheda.work@gmail.com** (do **not** open a public GitHub issue).
 See [SECURITY.md](SECURITY.md) for our full disclosure policy.
 
 ---
