@@ -1,0 +1,3 @@
+# Marker file — see PEP 561.
+# Indicates this package ships inline type annotations and type information
+# can be consumed by downstream projects.

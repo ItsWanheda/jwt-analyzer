@@ -1,3 +1,55 @@
-PyJWT>=2.6.0
-rich>=13.0.0
+# =============================================================================
+# JWT Analyzer - Runtime Dependencies
+# =============================================================================
+# Install with: pip install -r requirements.txt
+# Python 3.9+ required (see pyproject.toml / setup.py if present)
+#
+# Version strategy: use >= for minimum, no upper bound.
+# Upper bounds cause painful breakage in transitive deps down the line.
+# Pin in lockfiles (pip-compile, poetry.lock, uv.lock) for reproducibility.
+# =============================================================================
+
+
+# --- Core JWT handling ---
+# PyJWT with the [crypto] extra - this pulls in `cryptography` automatically
+# and is required for RS256/RS384/RS512/ES256/ES384/ES512 + JWK support.
+# Without [crypto], only HS* algorithms work.
+PyJWT[crypto]>=2.8.0
+
+# Explicit pin for cryptography as a fallback.
+# If a future PyJWT version changes its [crypto] extra, this guarantees we
+# still have a working crypto backend. Bump when CVE advisories drop.
+cryptography>=41.0.0
+
+
+# --- CLI framework ---
+# Click 8.x is required for the Group.option chaining and improved error
+# messages we use in main.py.
 click>=8.1.0
+
+
+# --- Terminal output ---
+# Rich for progress bars, tables, colored output, and pretty-printing JSON.
+# We degrade gracefully if it's missing but the UX suffers.
+rich>=13.0.0
+
+
+# --- HTTP client (JWKS fetching) ---
+# Used by core/jwks.py to fetch public keys from .well-known/jwks.json.
+# requests is preferred over urllib because of better SSL error messages.
+requests>=2.31.0
+
+
+# --- Config file support ---
+# For jwt-analyzer.yaml support. PyYAML is a C-extension-backed library
+# (yaml.safe_load is enough for our trust boundary).
+PyYAML>=6.0
+
+
+# --- Plugin system support ---
+# No external dep needed - plugins use stdlib importlib. Listed here so
+# people don't go looking for it:
+#   - importlib  (stdlib, Python 3.4+)
+#   - pathlib    (stdlib, Python 3.4+)
+#   - logging    (stdlib)
+#   - typing     (stdlib, Python 3.5+)

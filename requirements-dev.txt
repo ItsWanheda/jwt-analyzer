@@ -1,0 +1,80 @@
+# =============================================================================
+# JWT Analyzer - Development Dependencies
+# =============================================================================
+# Install with: pip install -r requirements.txt -r requirements-dev.txt
+# Or: pip install -e ".[dev]"  (if pyproject.toml has the [dev] extra)
+# =============================================================================
+
+
+# --- Pull in runtime deps so devs don't need two pip installs ---
+-r requirements.txt
+
+
+# --- Testing ---
+# The test framework. pytest is non-negotiable - we use fixtures, parametrize,
+# and the assertion rewriting magic.
+pytest>=7.4.0
+
+# Coverage reporting. Shows which lines your tests don't touch.
+# Run: pytest --cov=core --cov=utils --cov-report=term-missing
+pytest-cov>=4.1.0
+
+# Cleaner mocking. Wraps unittest.mock with a pytest fixture API.
+# Useful for mocking out jwt.decode, HTTP calls, file I/O in tests.
+pytest-mock>=3.11.0
+
+# Mock HTTP responses without making real network calls.
+# Critical for testing core/jwks.py without hitting real auth servers.
+responses>=0.23.0
+
+# Mock datetime/time.time() so expiry tests are deterministic.
+# Otherwise your tests break every time the clock ticks.
+freezegun>=1.2.0
+
+# Generate test data: fake JWTs, keys, etc.
+# https://github.com/kennethreitz/cryptography
+# Used in test fixtures to create tokens with specific claims/algs.
+# (Yes, the name overlaps with the stdlib module - it's a coincidence.)
+
+
+# --- Linting & formatting ---
+# Ruff: extremely fast linter + formatter. Replaces flake8, isort, black,
+# pyupgrade, and several others. One tool, written in Rust, ~100x faster.
+# Config in pyproject.toml under [tool.ruff].
+ruff>=0.1.0
+
+
+# --- Type checking ---
+# mypy for static type analysis. Strict-ish mode in pyproject.toml.
+# Run: mypy core/ utils/ main.py
+mypy>=1.5.0
+
+
+# --- Security linting ---
+# Bandit: finds common security issues in Python code (hardcoded passwords,
+# use of eval, weak crypto, etc.). Particularly relevant for THIS project
+# since we're literally a security tool - dogfooding is mandatory.
+# Run: bandit -r core/ utils/ main.py
+bandit>=1.7.0
+
+
+# --- Pre-commit hooks ---
+# Runs ruff, mypy, bandit, and pytest on staged files before commit.
+# Setup: pre-commit install
+# Config: .pre-commit-config.yaml
+pre-commit>=3.4.0
+
+
+# --- Multi-Python testing (optional but recommended for maintainers) ---
+# Test against Python 3.9, 3.10, 3.11, 3.12 in one command.
+# Requires those Python versions to be installed (use pyenv or asdf).
+# Run: tox
+tox>=4.0.0
+
+
+# --- Build & publish (only needed when releasing) ---
+# Modern build backend. Required for `python -m build` and `twine upload`.
+build>=1.0.0
+
+# Upload to PyPI. Not needed for day-to-day dev.
+twine>=4.0.0
