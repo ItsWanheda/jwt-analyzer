@@ -1,20 +1,30 @@
+"""Tiny file helpers. Kept here so tests can mock them."""
+
 import os
 
-def read_token_from_file(file_path: str) -> str:
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Token file not found: {file_path}")
-    
-    with open(file_path, 'r') as f:
+
+def read_token_from_file(path: str) -> str:
+    """Read a JWT from a file. Strips whitespace. Validates basic shape."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Token file not found: {path}")
+
+    with open(path, 'r') as f:
         token = f.read().strip()
-    
+
+    # Quick sanity check before we hand it to jwt.decode
     if token.count('.') != 2:
-        raise ValueError("Invalid JWT format: Expected two dots separating header, payload, signature.")
-    
+        raise ValueError(
+            f"Doesn't look like a JWT (expected 2 dots, got {token.count('.')}). "
+            f"Got: {token[:50]}..."
+        )
+
     return token
 
-def read_text_file(file_path: str) -> str:
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-    
-    with open(file_path, 'r', encoding='utf-8') as f:
+
+def read_text_file(path: str) -> str:
+    """Read a text file. UTF-8. Raises FileNotFoundError if missing."""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found: {path}")
+
+    with open(path, 'r', encoding='utf-8') as f:
         return f.read()
