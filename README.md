@@ -15,7 +15,7 @@ A professional, modular, and secure CLI-based tool for analyzing, verifying, and
 
 ## Installation
 ```bash
-git clone https://github.com/yourusername/jwt_analyzer.git
+git clone https://github.com/yourusername/jwt-analyzer.git
 cd jwt_analyzer
 pip install -r requirements.txt
 ```
