@@ -2,9 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ---
 
 ## [Released]
@@ -14,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.2.0] - 2026-06-25
+## [1.2.0] - 2026-06-25
 
 > Note: v1.1.0 was developed but never tagged as a release. All work from
 > that iteration is consolidated into 1.2.0 below.
@@ -157,6 +154,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Payload comparison (`diff` command)
 - Modular project structure (`core/`, `utils/`)
 
-[Unreleased]: https://github.com/yourusername/jwt-analyzer/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/yourusername/jwt-analyzer/compare/v1.0.0...v1.2.0
-[1.0.0]: https://github.com/yourusername/jwt-analyzer/releases/tag/v1.0.0
