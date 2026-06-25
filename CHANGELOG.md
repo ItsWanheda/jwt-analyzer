@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.2.0] - 2026-06-25
+## [v1.2.0] - 2026-06-25
 
 > Note: v1.1.0 was developed but never tagged as a release. All work from
 > that iteration is consolidated into 1.2.0 below.
