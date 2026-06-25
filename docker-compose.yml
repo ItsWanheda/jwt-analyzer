@@ -1,0 +1,210 @@
+# Docker Compose for jwt-analyzer
+#
+# This file is split into profiles so nothing auto-starts. Each profile
+# represents a real workflow I've needed at some point:
+#
+#   audit:   one-off token analysis
+#   ci:      automated scans in pipelines (exit codes matter)
+#   dev:     live-reload development (mounts source as volume)
+#   batch:   process a directory of tokens overnight
+#   jwks:    fetch and inspect JWKS endpoint contents
+#
+# Examples:
+#   docker compose --profile audit run --rm jwt-analyzer audit --token-file /tokens/x.txt
+#   docker compose --profile ci up --abort-on-container-exit
+#   docker compose --profile dev run --rm --service-ports jwt-analyzer
+
+version: '3.8'
+
+# Common x-anchors so we don't repeat ourselves
+x-common: &common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: jwt-analyzer:1.1
+  # Don't auto-restart. This is a CLI tool, not a daemon.
+  restart: 'no'
+
+services:
+
+  # ========================================================================
+  # Main analyzer service - used by all profiles
+  # ========================================================================
+  jwt-analyzer:
+    <<: *common
+    container_name: jwt-analyzer
+
+    # Default volumes - each profile overrides as needed
+    volumes:
+      - ./tokens:/app/tokens:ro
+      - ./reports:/app/reports
+      - ./config:/app/config:ro          # optional: for jwt-analyzer.yaml
+
+    environment:
+      # Defaults - override with -e in CLI if needed
+      - JWT_ANALYZER_LOG_LEVEL=INFO
+      - JWT_ANALYZER_WORKERS=4           # conservative default for containers
+      - PYTHONUNBUFFERED=1               # so logs show up immediately
+      - PYTHONDONTWRITEBYTECODE=1        # don't litter /app with .pyc
+
+    # Working dir matches Dockerfile
+    working_dir: /app
+
+    # Security hardening - applies regardless of profile
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:default                   # restrict syscalls
+    cap_drop:
+      - ALL
+    cap_add:
+      # Nothing. We don't need any caps.
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      - /home/jwtuser:size=10M,uid=1000  # for any user-level temp files
+
+    # Prevent OOM - brute force with 16 workers + huge wordlist can eat RAM
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+
+    # Healthcheck - inherited from Dockerfile but can override here
+    healthcheck:
+      test: ["CMD", "python", "main.py", "--help"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+    profiles: ["audit", "ci", "dev", "batch", "jwks"]  # opt-in to all
+
+    # Default command - just shows help
+    command: ["--help"]
+
+  # ========================================================================
+  # Profile: audit
+  # One-off analysis of a single token. Most common use case.
+  # Usage:
+  #   docker compose --profile audit run --rm jwt-analyzer \
+  #     audit --token-file /tokens/jwt.txt --output /reports/audit1
+  # ========================================================================
+  jwt-analyzer-audit:
+    <<: *common
+  # Note: we extend the main service config above by reference,
+  # but in practice I just copy what I need. YAML anchors across
+  # services in compose are a pain to debug. Uncomment the lines below
+  # if you want to try it.
+
+  # jwt-analyzer-audit:
+  #   <<: *common
+  #   volumes:
+  #     - ./tokens:/app/tokens:ro
+  #     - ./reports:/app/reports
+  #   profiles: ["audit"]
+  #   command: ["--help"]  # override with 'run' command
+
+  # ========================================================================
+  # Profile: ci
+  # For GitHub Actions / GitLab CI / Jenkins etc.
+  # Run with --abort-on-container-exit so the pipeline fails on bad tokens.
+  #
+  # The 'audit' command exits with code 2 on CRITICAL findings,
+  # code 1 on HIGH, code 0 otherwise. Perfect for gating PRs.
+  # ========================================================================
+  jwt-analyzer-ci:
+    <<: *common
+    profiles: ["ci"]
+    volumes:
+      - ./tokens:/app/tokens:ro
+      - ./reports-ci:/app/reports
+    environment:
+      - JWT_ANALYZER_LOG_LEVEL=INFO
+      # In CI we want to fail fast - no point brute forcing a known-bad token
+      - CI=true
+
+  # ========================================================================
+  # Profile: dev
+  # Live development - source mounted as volume, no rebuild needed.
+  # Usage:
+  #   docker compose --profile dev run --rm jwt-analyzer bash
+  #   # then inside container:
+  #   python main.py audit --token-file /tokens/x.txt
+  # ========================================================================
+  jwt-analyzer-dev:
+    <<: *common
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev          # uses different Dockerfile (see below)
+    image: jwt-analyzer:dev
+    volumes:
+      # Mount source as volume - changes reflect immediately
+      - .:/app
+      # But exclude what we don't want to override
+      - /app/wordlists                    # use the bundled wordlists, not host
+      - /app/.pytest_cache                # keep cache inside container
+      - /app/__pycache__                  # don't pollute host
+      - ./reports:/app/reports
+    environment:
+      - JWT_ANALYZER_LOG_LEVEL=DEBUG
+    # read_only: false                    # dev needs to write pyc etc.
+    # No resource limits in dev - we're debugging, not running prod
+
+  # ========================================================================
+  # Profile: batch
+  # Process a whole directory of tokens. For after-hours bulk analysis.
+  # Drop .txt files into ./tokens/batch/ and run:
+  #   docker compose --profile batch up
+  # The entrypoint script processes each file and writes per-token reports.
+  # ========================================================================
+  jwt-analyzer-batch:
+    <<: *common
+    profiles: ["batch"]
+    volumes:
+      - ./tokens/batch:/app/tokens:ro     # input: lots of tokens
+      - ./reports/batch:/app/reports      # output: one report per token
+      - ./scripts:/app/scripts:ro         # custom batch processing script
+    environment:
+      - JWT_ANALYZER_WORKERS=8
+      - BATCH_MODE=1
+
+  # ========================================================================
+  # Profile: jwks
+  # Just fetch and dump a JWKS endpoint to inspect what's there.
+  # Useful when you're debugging why verification is failing.
+  # Usage:
+  #   docker compose --profile jwks run --rm jwt-analyzer \
+  #     verify-jwks --token-file /tokens/jwt.txt --jwks-url https://...
+  # ========================================================================
+  jwt-analyzer-jwks:
+    <<: *common
+    profiles: ["jwks"]
+    volumes:
+      - ./tokens:/app/tokens:ro
+      - ./reports:/app/reports
+    environment:
+      - JWT_ANALYZER_LOG_LEVEL=DEBUG       # see the HTTP calls
+
+# ========================================================================
+# Named volumes for CI artifacts (kept between runs for inspection)
+# ========================================================================
+volumes:
+  reports-ci:
+    # External CI systems mount this back into the runner for artifact upload
+    name: jwt-analyzer-reports
+
+# ========================================================================
+# Networks - keeping it simple, single network
+# If you ever add a target server container (for E2E tests), put it here.
+# ========================================================================
+networks:
+  default:
+    name: jwt-analyzer-net
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: jwta-net

@@ -1,0 +1,33 @@
+# Development variant - includes dev tools, no multi-stage optimization.
+# Built once, used as a throwaway environment.
+FROM python:3.12-slim
+
+# Dev tools I always want available
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        git \
+        vim \
+        less \
+        iputils-ping \
+        && rm -rf /var/lib/apt/lists/*
+
+# Full Python toolchain in case we need to compile anything
+RUN pip install --no-cache-dir --upgrade pip
+
+WORKDIR /app
+
+# Install all deps including dev/test ones
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+
+# Non-root user (same as prod)
+RUN groupadd -r jwtuser -g 1000 && \
+    useradd -r -u 1000 -g jwtuser -m -d /home/jwtuser -s /bin/bash jwtuser && \
+    chown -R jwtuser:jwtuser /app
+USER jwtuser
+
+# Entrypoint that drops to bash by default for dev
+ENTRYPOINT ["python"]
+CMD ["main.py", "--help"]
