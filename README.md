@@ -1,160 +1,513 @@
-# JWT Analyzer v1.0.0
+# 🔐 JWT Analyzer
 
-A professional, modular, and secure CLI-based tool for analyzing, verifying, and testing JSON Web Tokens (JWTs).
+> A CLI security tool for analyzing, testing, and breaking JSON Web Tokens.
+> Built for pentesters, bug bounty hunters, and security teams who need to
+> actually understand what's inside a JWT, not just decode it.
 
-## Features
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)](CHANGELOG.md)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
 
-*   **Algorithm & Metadata Parser**: Extracts `alg`, `typ`, and standard claims.
-*   **Time-Sensitive Validator**: Automatically calculates remaining validity time.
-*   **Security Testing Suite**: Detects 'none' algorithm vulnerabilities.
-*   **Brute-Force Hook**: Integrates wordlist-based signature verification.
-*   **Payload Comparison**: Diffs two JWT payloads to identify state changes.
-*   **RSA/JWK Verification**: Verifies tokens against public keys (RS256/ES256).
-*   **Token Forgery**: Modifies payloads and re-signs tokens for active testing.
-*   **Automated Reports**: Generates JSON reports for documentation.
+---
 
-## Installation
+## ⚡ Quick Start
+
+```bash
+# Option 1: pip (fastest for daily use)
+pip install jwt-analyzer
+jwt-analyzer audit --token-file token.txt
+
+# Option 2: from source
+git clone https://github.com/yourusername/jwt-analyzer.git
+cd jwt-analyzer
+pip install -r requirements.txt
+python main.py audit --token-file sample_token.txt
+
+# Option 3: Docker (best for CI/CD)
+docker compose --profile audit run --rm jwt-analyzer \
+    audit --token-file /tokens/jwt.txt
+```
+
+The `audit` command is the main one — it runs every check and gives you a report.
+
+---
+
+## 🤔 What does it actually do?
+
+Most JWT tools just decode the base64. This one actually **looks for problems**:
+
+| Check | What it finds |
+|-------|---------------|
+| `none` algorithm detection | Servers that accept unsigned tokens (CVE-2015-9235) |
+| Algorithm confusion | RS256 tokens that could be forged as HS256 |
+| `kid` header injection | SQLi / path traversal / command injection via the `kid` claim |
+| PII / secret scanning | Credit cards, SSNs, AWS keys, passwords leaking through payloads |
+| Brute-force attack | Cracks HS256 secrets using wordlists (multi-threaded) |
+| JWKS verification | Validates tokens against live identity providers |
+| Payload diffing | Shows exactly what changed between two tokens |
+| Token forgery | Crafts new tokens with custom payloads (for auth testing) |
+
+---
+
+## 📦 Installation
+
+### From source (recommended for development)
+
 ```bash
 git clone https://github.com/yourusername/jwt-analyzer.git
-cd jwt_analyzer
+cd jwt-analyzer
 pip install -r requirements.txt
 ```
----
 
-## Project Structure
-```text
+**Runtime requirements** (`requirements.txt`):
+- Python 3.9+
+- `pyjwt[crypto] >= 2.8.0` — RS/ES algorithm support
+- `cryptography >= 41.0.0` — crypto backend
+- `requests >= 2.31.0` — JWKS fetching
+- `rich >= 13.0.0` — pretty terminal output
+- `click >= 8.1.0` — CLI framework
+- `pyyaml >= 6.0` — config file support
 
-BUILD/jwt_analyzer/
-├── core/
-│   ├── __init__.py
-│   ├── diff.py
-│   ├── forgery.py
-│   ├── parser.py
-│   ├── security.py
-│   └── verification.py
-├── tests/
-├── utils/
-│   ├── __init__.py
-│   ├── io.py
-│   └── wordlists/
-├── .gitignore
-├── CHANGELOG.md
-├── config.py
-├── CONTRIBUTING.md
-├── LICENSE
-├── main.py
-├── README.md
-├── requirements.txt
-├── sample_token.txt
-└── SECURITY.md
+**Dev requirements** (`requirements-dev.txt`):
+- `pytest >= 7.0`
+- `pytest-cov >= 4.0`
+- `mypy >= 1.0`
+- `ruff >= 0.1.0` (linter)
 
+### Via Docker
+
+```bash
+docker pull yourusername/jwt-analyzer:latest
+# or build locally:
+docker compose build
 ```
+
+### Via pip (when published to PyPI)
+
+```bash
+pip install jwt-analyzer
+```
+
 ---
 
-## Usage
+## 🚀 Usage
 
-### Analyze a Token
+### Main command: `audit`
+
+Runs every check and produces a report. This is what you want 90% of the time.
+
+```bash
+python main.py audit --token-file tokens/jwt.txt
+```
+
+**Output:**
+```
+Audit Summary
+  Critical: 2
+  High:     1
+  Medium:   0
+  Low:      0
+
+❌ Critical findings - exiting with code 2
+```
+
+**Save reports:**
+```bash
+# JSON only (machine-readable, good for piping)
+python main.py audit --token-file token.txt \
+    --output reports/audit-1 --format json
+
+# HTML only (great for sharing with non-tech stakeholders)
+python main.py audit --token-file token.txt \
+    --output reports/audit-1 --format html
+
+# Both
+python main.py audit --token-file token.txt \
+    --output reports/audit-1 --format both
+```
+
+**Useful flags:**
+```bash
+# Skip brute force if you've already tested that vector
+python main.py audit --token-file token.txt --skip-bruteforce
+
+# Use a bigger wordlist + more workers
+python main.py audit --token-file token.txt \
+    --wordlist /usr/share/wordlists/jwt-secrets-10k.txt \
+    --workers 16
+
+# Enable verbose/debug logging
+python main.py --verbose audit --token-file token.txt
+```
+
+### Individual commands
+
+Sometimes you want just one thing. These are the building blocks:
+
+#### `analyze` — decode and inspect
 ```bash
 python main.py analyze --token-file token.txt
 ```
+Shows header, payload, and expiry status. **No signature verification.**
 
-### Verify with Public Key
+#### `security` — vulnerability checks only
 ```bash
+python main.py security --token-file token.txt
+```
+Checks for `none` alg, algorithm confusion, and `kid` injection.
+
+#### `brute-force` — crack the signing secret
+```bash
+python main.py brute-force --token-file token.txt \
+    --wordlist utils/wordlists/common_secrets.txt \
+    --workers 8
+```
+Tries every secret in the wordlist. Parallel by default. Only tests
+symmetric algorithms (HS256/384/512) — asymmetric ones use keys, not secrets.
+
+#### `diff` — compare two tokens
+```bash
+python main.py diff --token1 old.txt --token2 new.txt
+```
+Perfect for "I had `role: user` and now I want `role: admin`, what changed?"
+
+#### `verify-rsa` — verify with a public key
+```bash
+# PEM format
 python main.py verify-rsa --token-file token.txt --public-key public.pem
+
+# JWK format (auto-detected)
+python main.py verify-rsa --token-file token.txt --public-key key.jwk
 ```
 
-### Forge a Token
-```bash 
-python main.py forge --token-file original.txt --payload-file new_payload.json --secret mysecret
-```
-
-### Brute-Force Secret
-```bash 
-python main.py brute-force --token-file token.txt --wordlist wordlists/common_secrets.txt
-```
-
-### diff
+#### `verify-jwks` — verify against a live JWKS endpoint
 ```bash
-python main.py diff --token1 <path_to_token1.txt> --token2 <path_to_token2.txt>
-or 
-python main.py diff --token1 old_token.txt --token2 new_token.txt
-```
-### Output:
-```text 
-Payload Differences
-┌──────────┬──────────────┬──────────────┐
-│ Key      │ Old Value    │ New Value    │
-├──────────┼──────────────┼──────────────┤
-│ role     │ user         │ admin        │
-│ exp      │ 1678890000   │ 1678893600   │
-└──────────┴──────────────┴──────────────┘
+python main.py verify-jwks --token-file token.txt \
+    --jwks-url https://auth.example.com/.well-known/jwks.json
+
+# Skip TLS verification (debug only)
+python main.py verify-jwks --token-file token.txt \
+    --jwks-url https://localhost:8443/jwks \
+    --no-verify-ssl
 ```
 
-### verify-rsa
+#### `forge` — create a custom token
 ```bash
-python main.py verify-rsa --token-file token.txt --public-key public_key.pem
+python main.py forge \
+    --token-file original.txt \
+    --payload-file new-payload.json \
+    --secret mysecret \
+    --algorithm HS256 \
+    --output forged.txt \
+    --yes
 ```
-### Output:
-```text 
-✅ Token is valid!
-Payload: {'sub': '1234567890', 'name': 'John Doe'}
+⚠️ See [Security & Ethics](#-security--ethics) before using this.
+The `--yes` flag exists because we want you to think twice.
 
-If invalid:
-❌ Token verification failed: Invalid signature.
-
-With Report:
-python main.py verify-rsa --token-file token.txt 
---public-key public_key.pem --output report.json
-```
 ---
-## Advanced Usage
-Using Environment Variables
-```text
-You can customize the tool's behavior using environment variables:
 
-JWT_ANALYZER_WORDLIST_PATH: Path to a custom wordlist.
+## 📂 Project Structure
 
-JWT_ANALYZER_TIMEOUT: Timeout for brute-force operations (in seconds).
+```
+jwt-analyzer/
+├── main.py                       # CLI entry point
+├── config.py                     # Configuration & env vars
+├── Dockerfile                    # Production container
+├── Dockerfile.dev                # Dev container with live reload
+├── docker-compose.yml            # Multi-profile orchestration
+├── Makefile                      # Convenience commands
+├── requirements.txt              # Runtime dependencies
+├── requirements-dev.txt          # Test/dev dependencies
+├── .env.example                  # Documented env vars
+│
+├── core/
+│   ├── parser.py                 # JWT parsing & claim extraction
+│   ├── security.py               # Vuln checks (none alg, kid injection, etc.)
+│   ├── verification.py           # RSA/ECDSA public key verification
+│   ├── forgery.py                # Token crafting
+│   ├── diff.py                   # Payload comparison
+│   ├── jwks.py                   # JWKS endpoint fetching + caching
+│   ├── sensitive_scanner.py      # PII / secret detection
+│   ├── async_security.py         # Parallel brute force
+│   └── logging_config.py         # JSON + console logging
+│
+├── utils/
+│   ├── io.py                     # File reading helpers
+│   ├── report.py                 # HTML report generation
+│   └── wordlists/
+│       └── common_secrets.txt    # Bundled wordlist (~10k secrets)
+│
+├── plugins/                      # Custom check plugins (optional)
+│   └── README.md                 # How to write plugins
+│
+├── scripts/
+│   └── batch_audit.sh            # Process a directory of tokens
+│
+├── sample_token.txt              # Try it immediately
+├── LICENSE
+├── README.md                     # You are here
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+└── SECURITY.md
+```
 
-JWT_ANALYZER_LOG_LEVEL: Logging level (DEBUG, INFO, WARNING, ERROR).
+---
 
-JWT_ANALYZER_ENABLE_RICH: Enable/disable Rich formatting (true/false).
+## ⚙️ Configuration
+
+### Environment variables
+
+All have sensible defaults. Override when needed:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWTANALYZER_WORDLIST_PATH` | `utils/wordlists/common_secrets.txt` | Path to secrets wordlist |
+| `JWT_ANALYZER_TIMEOUT` | `300` | Brute force timeout (seconds) |
+| `JWT_ANALYZER_WORKERS` | `8` | Parallel workers for brute force |
+| `JWT_ANALYZER_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `JWT_ANALYZER_ENABLE_RICH` | `true` | Pretty terminal output |
 
 Example:
-JWT_ANALYZER_WORDLIST_PATH=/path/to/my/wordlist.txt python main.py brute-force --token-file token.txt
-
-Generating Help
-To see all available commands and options:
-python main.py --help
-
-To see help for a specific command:
-python main.py analyze --help
+```bash
+JWT_ANALYZER_LOG_LEVEL=DEBUG \
+JWT_ANALYZER_WORKERS=16 \
+python main.py audit --token-file token.txt
 ```
----
 
-## Troubleshooting
-*ModuleNotFoundError:* Ensure you have installed the dependencies (pip install -r requirements.txt).
+Or use the `.env.example` template:
+```bash
+cp .env.example .env
+# edit .env
+set -a && source .env && set +a
+python main.py audit --token-file token.txt
+```
 
-*FileNotFoundError:* Check that the paths to your token, wordlist, and public key files are correct.
+### Config file (optional)
 
-*Invalid JWT format:* Ensure the token file contains only the JWT string (no extra whitespace or newlines).
+Drop a `jwt-analyzer.yaml` in your working directory to override defaults
+without env vars:
 
-*Invalid signature:* When using verify-rsa, ensure the public key matches the private key used to sign the token.
-
----
-## Example Workflow
-
-* ** Analyze a token to see its contents and expiration.**
-* **Check security to ensure it's not using the 'none' algorithm.**
-* **Verify the token using the server's public key to ensure it's legitimate.**
-* **Compare it with another token to see what claims have changed.**
-* **Forge a new token with elevated privileges (e.g., role: admin) to test if the application properly validates the signature.**
-* **Generate a report for documentation purposes.**
----
-## Contributing
-We welcome contributions! Please see CONTRIBUTING.md for details on how to submit your ideas, bug reports, or pull requests.
+```yaml
+wordlist_path: /opt/secrets/jwt-megalist.txt
+brute_force_timeout: 600
+parallel_workers: 16
+log_level: DEBUG
+```
 
 ---
 
-## License
-This project is licensed under the LICENSE file.
+## 🐳 Docker Usage
+
+### Available profiles
+
+The `docker-compose.yml` uses profiles so nothing auto-starts. Pick the one
+that matches your workflow:
+
+| Profile | Use case |
+|---------|----------|
+| `audit` | One-off analysis of a single token |
+| `ci` | Automated scans in CI/CD pipelines (respects exit codes) |
+| `dev` | Live development with source mounted as volume |
+| `batch` | Process a directory of tokens overnight |
+| `jwks` | Fetch and inspect JWKS endpoint contents |
+
+### Quick examples
+
+**Audit a single token:**
+```bash
+docker compose --profile audit run --rm jwt-analyzer \
+    audit --token-file /tokens/jwt.txt \
+          --output /reports/audit-1
+```
+
+**Verify against a live JWKS:**
+```bash
+docker compose --profile jwks run --rm jwt-analyzer \
+    verify-jwks --token-file /tokens/jwt.txt \
+                --jwks-url https://auth.example.com/.well-known/jwks.json
+```
+
+**Batch process a directory:**
+```bash
+# Drop JWTs (one per .txt file) into ./tokens/batch/, then:
+docker compose --profile batch up
+ls reports/batch/
+```
+
+### CI/CD integration
+
+Exit codes for pipeline gating:
+- `0` = clean (only LOW/MEDIUM findings, or none)
+- `1` = HIGH severity findings
+- `2` = CRITICAL findings
+
+**GitHub Actions example:**
+```yaml
+- name: JWT Security Audit
+  run: |
+    docker compose --profile ci run --rm \
+      -v ${{ github.workspace }}/tokens:/app/tokens:ro \
+      jwt-analyzer audit \
+        --token-file /app/tokens/prod-jwt.txt \
+        --skip-bruteforce
+```
+
+**GitLab CI example:**
+```yaml
+jwt-audit:
+  stage: security
+  script:
+    - docker compose --profile ci run --rm
+        -v "$CI_PROJECT_DIR/tokens:/app/tokens:ro"
+        jwt-analyzer audit
+          --token-file /app/tokens/jwt.txt
+          --skip-bruteforce
+  allow_failure: false
+```
+
+### Development mode
+
+Live-reload your source code changes without rebuilding the image:
+
+```bash
+docker compose --profile dev run --rm -it jwt-analyzer bash
+# Now you're inside the container:
+python main.py audit --token-file /tokens/jwt.txt
+```
+
+---
+
+## 🔍 Example Workflow
+
+A realistic pentest scenario:
+
+```bash
+# 1. Found a JWT in the app's localStorage. Dump it.
+python main.py analyze --token-file captured.txt
+
+# 2. Quick security check - 'none' alg? weak kid? confused algorithms?
+python main.py security --token-file captured.txt
+
+# 3. Try to crack the signing secret
+python main.py brute-force --token-file captured.txt \
+    --wordlist utils/wordlists/common_secrets.txt
+
+# 4. Got the secret. Compare a normal user token vs admin token
+python main.py diff --token1 user-token.txt --token2 admin-token.txt
+# → role changed from "user" to "admin", exp extended
+
+# 5. Forge a new admin token
+cat > admin-payload.json << EOF
+{
+  "sub": "1234567890",
+  "role": "admin",
+  "exp": 9999999999
+}
+EOF
+
+python main.py forge \
+    --token-file captured.txt \
+    --payload-file admin-payload.json \
+    --secret cracked-secret \
+    --output forged-admin.txt \
+    --yes
+
+# 6. Full audit with report for the writeup
+python main.py audit --token-file captured.txt \
+    --output reports/final-audit \
+    --format both
+```
+
+---
+
+## 🧩 Plugins
+
+Custom checks can be added without modifying core code. Drop a file in
+`plugins/` that exposes a `register()` function:
+
+```python
+# plugins/my_checks_plugin.py
+class MyOrgClaimsPlugin:
+    name = "myorg_claims"
+    description = "Validates organization-specific JWT claims"
+
+    def check(self, token: str) -> dict:
+        # your custom check logic
+        ...
+
+def register():
+    return MyOrgClaimsPlugin()
+```
+
+Plugins auto-load on startup. See `plugins/README.md` for the full API.
+
+---
+
+## 🛡️ Security & Ethics
+
+**Read this. Seriously.**
+
+This tool can forge tokens, crack secrets, and bypass authentication. That's
+the point, but it also means you can hurt people with it.
+
+### ✅ Do
+- Only test systems you have **written authorization** to test
+- Use it for security audits, bug bounties, CTFs, your own apps, and education
+- Document what you found and how (that's what `--output reports/` is for)
+- Follow responsible disclosure for any vulns you discover
+
+### ❌ Don't
+- Don't run this against systems you don't own or have explicit permission for
+- Don't use it to access accounts that aren't yours
+- Don't be the reason computer fraud laws exist
+
+Unauthorized access to computer systems is illegal in most jurisdictions
+(CFAA in the US, Computer Misuse Act in the UK, similar laws everywhere).
+The `--yes` flag on `forge` exists because we want you to think twice.
+
+### Reporting vulnerabilities in THIS tool
+
+Found a security bug in jwt-analyzer itself? Please email
+**security@yourdomain.com** (do **not** open a public GitHub issue).
+See [SECURITY.md](SECURITY.md) for our full disclosure policy.
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+Quick checklist for PRs:
+- [ ] New functionality is documented in the README
+- [ ] Entry added to CHANGELOG.md under `[Unreleased]`
+- [ ] No new hardcoded paths or secrets
+- [ ] Code passes `ruff check` and `mypy` if you ran them locally
+- [ ] Plugin additions follow the pattern in `plugins/README.md`
+
+---
+
+## 📝 License
+
+MIT — see [LICENSE](LICENSE) for the full text.
+
+In short: do what you want, just don't blame us if something goes wrong,
+and keep the copyright notice.
+
+---
+
+## 🙏 Credits
+
+- The OWASP JWT cheat sheet — for the vulnerability patterns
+- [SecLists](https://github.com/danielmiessler/SecLists) — bundled wordlists
+- The PyJWT maintainers — solid crypto library
+- Everyone who's reported bugs and contributed fixes
+
+---
+
+## 📚 Further reading
+
+- [RFC 7519 — JSON Web Token](https://datatracker.ietf.org/doc/html/rfc7519)
+- [OWASP JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
+- [PortSwigger Web Security Academy — JWT attacks](https://portswigger.net/web-security/jwt)
+- [Auth0 JWT documentation](https://auth0.com/docs/secure/tokens/json-web-tokens)
