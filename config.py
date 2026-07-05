@@ -12,7 +12,7 @@ class Config:
     # Defaults - these get overridden by env vars or config files
     DEFAULT_WORDLIST_PATH = os.getenv(
         "JWT_ANALYZER_WORDLIST_PATH",
-        str(Path(__file__).parent / "wordlists" / "common_secrets.txt")
+        str(Path(__file__).parent / "utils" / "wordlists" / "common_secrets.txt")
     )
 
     # I'm being explicit about which algs are HMAC vs asymmetric
