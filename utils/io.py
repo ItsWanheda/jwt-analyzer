@@ -4,14 +4,15 @@ import os
 
 
 def read_token_from_file(path: str) -> str:
-    """Read a JWT from a file. Strips whitespace. Validates basic shape."""
+    """Read a JWT from a file. Strips whitespace and BOM. Validates basic shape."""
     if not os.path.exists(path):
         raise FileNotFoundError(f"Token file not found: {path}")
 
-    with open(path, 'r') as f:
+    # utf-8-sig strips a UTF-8 BOM if present, and reads plain UTF-8 fine.
+    # JWTs are ASCII (base64url) so this works regardless of source encoding.
+    with open(path, 'r', encoding='utf-8-sig') as f:
         token = f.read().strip()
 
-    # Quick sanity check before we hand it to jwt.decode
     if token.count('.') != 2:
         raise ValueError(
             f"Doesn't look like a JWT (expected 2 dots, got {token.count('.')}). "
@@ -22,9 +23,9 @@ def read_token_from_file(path: str) -> str:
 
 
 def read_text_file(path: str) -> str:
-    """Read a text file. UTF-8. Raises FileNotFoundError if missing."""
+    """Read a text file. UTF-8 with BOM handling. Raises FileNotFoundError if missing."""
     if not os.path.exists(path):
         raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8-sig') as f:
         return f.read()
