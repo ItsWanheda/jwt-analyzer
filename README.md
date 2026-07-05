@@ -91,6 +91,27 @@ pip install jwt-analyzer
 
 ---
 
+## 💻 System Requirements
+
+| Component | Minimum | Tested |
+|-----------|---------|--------|
+| Python | 3.9 | **3.14.6** |
+| RAM | 256 MB | 1 GB (large wordlists) |
+| Disk | 50 MB | 200 MB (with bundled wordlists) |
+| OS | Any | Windows 11 / Ubuntu 22.04 / macOS 14 |
+
+> **Windows users:** Use `py` instead of `python` to launch scripts.
+> Token files saved by PowerShell `Set-Content` may carry a UTF-8 BOM —
+> the tool strips it automatically (`utf-8-sig` encoding), so this is transparent.
+
+### Python version notes
+
+- **3.9 – 3.13**: Fully supported.
+- **3.14**: Fully supported. Note that 3.14's `re` module enforces stricter
+  pattern parsing, which surfaced one IPv4 regex bug in v1.2.0 (fixed in v1.2.1).
+
+---
+
 ## 🚀 Usage
 
 ### Main command: `audit`
@@ -441,6 +462,49 @@ def register():
 ```
 
 Plugins auto-load on startup. See `plugins/README.md` for the full API.
+
+---
+
+## 🔧 Troubleshooting
+
+### `'utf-8' codec can't decode byte 0xb1`
+
+Your token file was saved with a non-UTF-8 encoding (usually a UTF-8 BOM from
+Windows PowerShell). Re-save it:
+
+```powershell
+Get-Content sample_token.txt -Encoding UTF8 | Set-Content sample_token.txt -Encoding UTF8 -NoNewline
+```
+
+The tool also auto-handles BOM in v1.2.1+, so this is usually a one-time fix.
+
+### `No such command 'brute_force'`
+
+Click maps function names to hyphenated command names. Use the hyphenated form:
+
+```bash
+python main.py brute-force --token-file token.txt   # ✅
+python main.py brute_force --token-file token.txt   # ❌
+```
+
+### `python: command not found` (Windows)
+
+Use `py` instead:
+
+```powershell
+py main.py audit --token-file token.txt
+```
+
+### `re.PatternError: nothing to repeat`
+
+You're on Python 3.14 with an older build. Upgrade to v1.2.1 or later —
+this was fixed in the IPv4 pattern.
+
+### Forge produces a 3-segment token but it won't verify
+
+Check that `--secret` matches the original token's signing secret.
+Run `analyze` on both the original and forged tokens and compare headers —
+they should be identical except for `alg`.
 
 ---
 
