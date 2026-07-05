@@ -2,7 +2,7 @@ import jwt
 import time
 import base64
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 def _base64url_decode(s: str) -> bytes:
     s += '=' * (4 - len(s) % 4)
@@ -20,7 +20,7 @@ def parse_jwt(token: str) -> dict:
         expiry_info = {}
         if 'exp' in payload:
             exp_timestamp = payload['exp']
-            current_time = time.time()
+            current_time = datetime.now(timezone.utc).timestamp()
             remaining = exp_timestamp - current_time
             expiry_info = {
                 'exp_timestamp': exp_timestamp,
