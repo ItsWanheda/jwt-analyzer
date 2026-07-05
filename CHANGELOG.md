@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Released]
 
+### [1.2.1] - 2026-07-05
+
+Patch release — fixes discovered during first-run validation on Python 3.14 / Windows.
+
+#### Fixed
+
+- **`forge` command crashed with `bytes-like object` error**: `forgery.py` was passing `parts` (a list of 3 strings) to `_base64url_decode` instead of `parts`. Resulted in `argument should be a bytes-like object or ASCII string, not 'list'`.
+- **`forge` produced garbage signature segment**: `signed.split('.')` returned a list and was being f-string-interpolated as a Python repr. Replaced with `signed.rsplit('.', 1)[-1]`. Rewrote the HMAC branch to sign directly with `hmac.new()` instead of round-tripping through `jwt.encode()`.
+- **`brute-force` workers kept running after a match**: `if stop_flag:` was always truthy (non-empty list). Fixed to `if stop_flag:` so the thread pool actually stops when a secret is cracked.
+- **`parser.py` raised `NameError` on tokens with `exp` claim**: `timezone` was referenced but never imported. Added to the `datetime` import.
+- **Python 3.14: PII scanner crashed with `re.PatternError: nothing to repeat at position 25`**: IPv4 pattern contained `|?\d\d?` (bare `?` with nothing to repeat). Replaced with `|1?\d\d?`. Also tightened email pattern: `[A-Z|a-z]` → `[A-Za-z]` (the `|` inside a character class was a literal pipe).
+- **Windows: token files saved by PowerShell failed to decode** with `'utf-8' codec can't decode byte 0xb1`. Cause: PowerShell `Set-Content` defaults to UTF-8 with BOM on some configs. `read_token_from_file` and `read_text_file` now use `encoding='utf-8-sig'`, which transparently strips a BOM if present.
+- **Import mismatch**: `main.py` imported from `core.forgery` but the file was named `forger.py`. Renamed file and refactored to PEP 8 module name.
+
+#### Changed
+
+- `forge_token` now signs HS256/384/512 directly via `hmac.new()` — fewer moving parts and easier to reason about.
+- Added explicit `concurrent.futures` shutdown via `with` block on the brute-force thread pool (already present, now verified working post-fix).
+
+#### Notes
+
+- All fixes are backwards compatible. No CLI or config changes.
+- Verified end-to-end on Python 3.14.6 / Windows PowerShell 5.1 with the JWT.io demo token.
+
 ### Added
 
 
