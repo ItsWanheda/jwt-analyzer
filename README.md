@@ -98,7 +98,7 @@ pip install jwt-analyzer
 | Python | 3.9 | **3.14.6** |
 | RAM | 256 MB | 1 GB (large wordlists) |
 | Disk | 50 MB | 200 MB (with bundled wordlists) |
-| OS | Any | Windows 11 / Ubuntu 22.04 / macOS 14 |
+| OS | Any | Windows 10/11 / Ubuntu 22.04 / macOS 14 |
 
 > **Windows users:** Use `py` instead of `python` to launch scripts.
 > Token files saved by PowerShell `Set-Content` may carry a UTF-8 BOM —
