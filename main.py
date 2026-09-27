@@ -41,8 +41,11 @@ if not Config.is_rich_enabled():
 
 logger = logging.getLogger(__name__)
 
+VERSION = "1.2.0"
+
 
 @click.group()
+@click.version_option(VERSION, prog_name='jwt-analyzer')
 @click.option('--verbose', '-v', is_flag=True, help='Debug logging')
 @click.option('--log-file', default=None, help='Write logs to this file')
 def cli(verbose, log_file):
