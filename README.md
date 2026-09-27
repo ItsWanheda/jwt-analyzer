@@ -19,7 +19,7 @@ pip install jwt-analyzer
 jwt-analyzer audit --token-file token.txt
 
 # Option 2: from source
-git clone https://github.com/yourusername/jwt-analyzer.git
+git clone https://github.com/ItsWanheda/jwt-analyzer.git
 cd jwt-analyzer
 pip install -r requirements.txt
 python main.py audit --token-file sample_token.txt
@@ -55,7 +55,7 @@ Most JWT tools just decode the base64. This one actually **looks for problems**:
 ### From source (recommended for development)
 
 ```bash
-git clone https://github.com/yourusername/jwt-analyzer.git
+git clone https://github.com/ItsWanheda/jwt-analyzer.git
 cd jwt-analyzer
 pip install -r requirements.txt
 ```
@@ -78,7 +78,7 @@ pip install -r requirements.txt
 ### Via Docker
 
 ```bash
-docker pull yourusername/jwt-analyzer:latest
+docker pull ItsWanheda/jwt-analyzer:latest
 # or build locally:
 docker compose build
 ```
